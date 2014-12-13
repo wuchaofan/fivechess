@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<style type="text/css">
+	body{
+		margin-top: 0px;
+		margin-left: 0px;
+	}
+	#join{
+		margin-right: 30%;
+		margin-top: 100px;
+		float: right;
+	}
+	</style>
+</head>
+<body>
+<canvas width="700" height="700" id="fivegame"></canvas>
+<div id="join">
+	<input type="button" style="width: 50px;" class="joinroom" value="A1">
+	<input type="button" style="width: 50px;" class="joinroom" value="A2">
+	<input type="button" style="width: 50px;" class="joinroom" value="A3">
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/jquery-1.11.1.min.js"></script>
+<script type="text/javascript">
+	var saveArr=[];
+	var ROOM='';
+	var canvas = document.getElementById("fivegame");
+	var context = canvas.getContext("2d");
+	context.fillStyle = "#cccccc";
+	context.fillRect(0, 0, canvas.width, canvas.height);
+	// context.fillStyle = "#cccccc";
+	// context.fillRect(50, 50, canvas.width-50, canvas.height-50);
+	// context.fillStyle = "#000000";
+	context.strokeStyle = "rgb(0,0,0)";
+	// context.beginPath();
+	for (var i = 50; i <canvas.height; i+=50) {
+		context.moveTo(50, i);
+		context.lineTo(canvas.width-50, i);
+		context.moveTo(i, 50);
+		context.lineTo(i, canvas.width-50);
+
+		context.stroke();
+
+	};
+	var image = new Image();
+	image.src='/cirlcer.png';
+	var imageB = new Image();
+	imageB.src='/cirlceb.png';
+	var COLORURL={'r': image,'b': imageB};
+	var COLOR='r';
+	function round(x){
+		var z=0;
+		if(x%50<=25){
+			z=parseInt(x/50);
+		}else{
+			z=parseInt(x/50)+1;
+		}
+		return z;
+	}
+	var socket = io();
+	canvas.addEventListener('click', function(e){
+		var zx = round(e.offsetX)*50;
+		var zy = round(e.offsetY)*50;
+		var nx = zx==0?50:zx;
+		var ny = zy==0?50:zy;
+		if((nx>=50&&nx<=canvas.width-50)&&(ny>=50&&ny<=canvas.width-50)){
+			for(var i in saveArr){
+				if(saveArr[i].x===nx&&saveArr[i].y===ny){
+					console.log("已占用！")
+					return false;
+				}
+			}
+			var data = {x: nx,y: ny,color: COLOR,room: ROOM}
+
+			saveArr.push(data);
+			context.drawImage(COLORURL[COLOR],nx-23,ny-23,45,45);
+			socket.emit('chress',data,function(res){
+				console.log(res);
+			});
+
+		}
+	}, false);
+	var cID=null;
+	socket.on("groupchat",function(data){
+		console.log(data);
+	});
+	socket.on("chress",function(data){
+		console.log(data);
+
+		if(data.color=='r'){
+			COLOR='b';
+		}
+		context.drawImage(COLORURL[data.color],data.x-23,data.y-23,45,45);
+		saveArr.push(data);
+
+	});
+
+	socket.emit("myid",'hello',function(msg){
+		cID=msg.id;
+		console.log(cID);
+	})
+	$(".joinroom").click(function(){
+		ROOM = $(this).val();
+		console.log(ROOM);
+		$(this).attr('disabled',true);
+		socket.emit("join",{userID: cID,room: ROOM},function(data){
+			if(data.error){
+				alert("已满！");
+				return false;
+			}
+		});
+	});
+</script>
+</body>
+</html>
